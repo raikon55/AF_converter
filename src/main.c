@@ -24,14 +24,14 @@ int main(int argc, char* argv[]) {
      * on the struct
      */
     non_deterministic_parser(argv[1], non_det);
-    show_automata(non_det);
+    //show_automata(non_det);
     /*
      * Call the function to parse the AFN and return AFD
      */
     af_t* det = (af_t*) malloc(sizeof(af_t));
     init_automata(det);
     deterministic_convert(non_det, det);
-    show_automata(det);
+    //show_automata(det);
 
     /*
      * Call function to simulate AFD
