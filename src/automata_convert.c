@@ -10,8 +10,6 @@
 
 #include "automata_convert.h"
 
-#define MAX_BUFFER_SIZE 128UL
-
 void help(char* err)
 {
     char* str = strrchr(err, '/');
@@ -19,21 +17,33 @@ void help(char* err)
     "Erro na execução\n"
     "Uso: %s arquivo.jff\n"
     "Junto a chamada do programa, passe como argumento um arquivo do programa"
-    "JFLAP.\nEsse arquivo deve ser conter informações sobre um automâto não"
+    "JFLAP.\nEsse arquivo deve ser conter informações sobre um automâto não "
     "determinisco.\n", &str[1]);
 }
 
-void  show_automata(af_t* automata)
+void show_automata(af_t* automata)
 {
-    printf("Initial state: %u\n"
-           "Total of states: %u\n"
-           "Total of transitions: %u\n",
-           automata->start, automata->num_states, automata->num_transition);
+    fprintf(stdout, "Initial state: %i\n"
+           "Total of states: %lu\n"
+           "Total of transitions: %lu\n"
+           "Alphabet size: %lu\n",
+           automata->start, automata->num_states, automata->num_transition,
+           automata->alphabet_size);
 
     for ( int i = 0; i < automata->num_transition; i++) {
-        printf("Transition %i: From %u to %u with %c\n", i,
+        fprintf(stdout, "Transition %i: From %i to %i with %c\n", i+1,
                 automata->transitions[i][0], automata->transitions[i][1],
                 automata->transition_symbol[i]);
+    }
+
+    for ( int i = 0; i < automata->alphabet_size; i++ ) {
+        fprintf(stdout, "Symbol %i: %c\n", i+1, automata->alphabet[i]);
+    }
+
+    int cnt = 0;
+    while ( automata->end[cnt] != -1 ) {
+        fprintf(stdout, "End state %i: %i\n", cnt+1, automata->end[cnt]);
+        cnt++;
     }
 }
 
@@ -43,9 +53,14 @@ void non_deterministic_parser(char* stream, af_t* automata)
 
     if ( (file = fopen(stream, "r")) != NULL ) {
         get_states(file, automata);
+        fseek(file, SEEK_SET, 0);
         get_transitions(file, automata);
 
         fclose(file);
+
+        get_alphabet(automata);
+    } else {
+        puts("Can't open the jff file");
     }
 }
 
@@ -57,26 +72,27 @@ void init_automata(af_t* automata)
     automata->num_transition = 0;
     automata->transition_symbol = NULL;
     automata->transitions = NULL;
+    automata->alphabet = NULL;
+    automata->alphabet_size = 0;
 }
 
 void get_states(FILE* file, af_t* automata)
 {
-    unsigned short id_state,
-                   i = 0;
+    short id_state, i = 0;
 
     char* buffer = (char*) calloc(MAX_BUFFER_SIZE, sizeof(char)),
         * tmp;
 
     // List all final states
-    unsigned short* final_states =
-            (unsigned short*) calloc(MAX_BUFFER_SIZE, sizeof(unsigned short));
+    short* final_states =
+            (short*) calloc(MAX_BUFFER_SIZE, sizeof(short));
 
     //Get all states, and register the initial and finals states
     do {
         fgets(buffer, MAX_BUFFER_SIZE, file);
 
         if ( (tmp = strstr(buffer, "<state")) != NULL ) {       //Find 'state' on string read on the .xml
-            sscanf(tmp, "<state id=\"%hu\" name=", &id_state);  // Get id state
+            sscanf(tmp, "<state id=\"%hi\" name=", &id_state);  // Get id state
             automata->num_states++;
         }
 
@@ -85,9 +101,11 @@ void get_states(FILE* file, af_t* automata)
         if ( strstr(buffer, "<final/>") != NULL ) final_states[i++] = id_state; // Is final state?
     } while( ! strstr(buffer, "<transition>") );
 
+    while ( i < MAX_BUFFER_SIZE ) final_states[i++] = -1;
     // final_states size is too big that necessary, this loop just limit it
-    automata->end = (unsigned short*) calloc(automata->num_states, sizeof(unsigned short));
+    automata->end = (short*) calloc(automata->num_states+1, sizeof(short));
     for ( i = 0; i < automata->num_states; i++) automata->end[i] = final_states[i];
+    automata->end[i] = -1;
 
     free(buffer);
     free(final_states);
@@ -96,15 +114,15 @@ void get_states(FILE* file, af_t* automata)
 void get_transitions(FILE* file, af_t* automata)
 {
     char* buffer = (char*) calloc(MAX_BUFFER_SIZE, sizeof(char));
-    unsigned char symbol[MAX_BUFFER_SIZE];
-    unsigned short transition[99][2];
+    char symbol[MAX_BUFFER_SIZE];
+    short transition[MAX_BUFFER_SIZE][2];
 
     do {
         fgets(buffer, MAX_BUFFER_SIZE, file);
 
         if ( strstr(buffer, "<transition>") != NULL ) {
             fscanf(file,
-                    "\t\t\t<from>%hu</from>\n\r\t\t\t<to>%hu</to>\n\r\t\t\t<read>%c</read>",
+                    "\t\t\t<from>%hi</from>\n\r\t\t\t<to>%hi</to>\n\r\t\t\t<read>%c</read>",
                     &transition[automata->num_transition][0],
                     &transition[automata->num_transition][1],
                     &symbol[automata->num_transition]);
@@ -114,12 +132,12 @@ void get_transitions(FILE* file, af_t* automata)
     } while( ! feof(file) );
 
     automata->transition_symbol =
-            (unsigned char*) calloc(automata->num_transition, sizeof(unsigned char));
+            (char*) calloc(automata->num_transition, sizeof(char));
     automata->transitions =
-            (unsigned short**) calloc(automata->num_transition, sizeof(unsigned short*));
+            (short**) calloc(automata->num_transition, sizeof(short*));
 
     for ( int i = 0; i < automata->num_transition; i++) {
-        automata->transitions[i] = (unsigned short*) calloc(2, sizeof(unsigned short));
+        automata->transitions[i] = (short*) calloc(2, sizeof(short));
         automata->transitions[i][0] = transition[i][0];
         automata->transitions[i][1] = transition[i][1];
         automata->transition_symbol[i] = symbol[i];
@@ -128,40 +146,302 @@ void get_transitions(FILE* file, af_t* automata)
     free(buffer);
 }
 
-af_t* deterministic_convert(af_t* non_det)
+void get_alphabet(af_t* automata)
 {
-    int count = 0;
-    unsigned short tmp_transition[non_det->num_transition][2];
-    unsigned char tmp_symbol[non_det->num_transition];
+    char alphabet[automata->num_transition];
+    size_t count = 0;
 
-    /*
-     * List non deterministic transitions
-     */
-    for (int j = 0; j < non_det->num_transition; j++ ) {
-        for (int i = j+1; i < non_det->num_transition; i++) {
-            if ( (non_det->transitions[j][0] == non_det->transitions[i][0])
-              && (non_det->transition_symbol[j] == non_det->transition_symbol[i]) ) {
-                // Yes, this part is horrible
-                // Probably the worst code in this program
-                tmp_transition[count][0] = non_det->transitions[i][0];
-                tmp_transition[count][1] = non_det->transitions[i][1];
-                tmp_symbol[count++] = non_det->transition_symbol[i];
-                // Sorry
-                tmp_transition[count][0] = non_det->transitions[j][0];
-                tmp_transition[count][1] = non_det->transitions[j][1];
-                tmp_symbol[count++] = non_det->transition_symbol[j];
+    memcpy(alphabet, automata->transition_symbol, sizeof(alphabet));
+
+    for (int i = 0; i < automata->num_transition; i++ ) {
+        for (int j = i+1; j < automata->num_transition; j++) {
+            if ( alphabet[i] == alphabet[j] ) {
+                alphabet[j] = -1;
             }
+        }
+        if ( alphabet[i] != -1 ) {
+            count++;
         }
     }
 
-    /*
-     * Convert non determinism transition and save it on new automata
+    automata->alphabet = (char*) calloc(count, sizeof(char));
+    automata->alphabet_size = count--;
+
+    for ( int i = 0; i < automata->num_transition; i++) {
+        if ( alphabet[i] != -1 ) {
+            automata->alphabet[count] = alphabet[i];
+            count--;
+        }
+    }
+}
+
+void deterministic_convert(af_t* non_det, af_t* det)
+{
+    memcpy(det, non_det, sizeof(af_t));
+    remove_non_determinist_transitions(det);
+}
+
+void add_transition(transition_t* list, short* transition, char symbol)
+{
+    transition_t* new = (transition_t*) malloc(sizeof(transition_t));
+
+    new->from = transition[0];
+    new->to = transition[1];
+    new->symbol = symbol;
+    new->count = 0;
+    new->next = NULL;
+
+    new->next = list->next;
+    list->next = new;
+
+    list->size++;
+}
+
+void remove_non_determinist_transitions(af_t* det)
+{
+    size_t size = det->num_transition;
+    transition_t* temp_transition = (transition_t*) malloc(sizeof(transition_t)),
+                * new_transitions = (transition_t*) malloc(sizeof(transition_t));
+    temp_transition->next = new_transitions->next = NULL;
+    temp_transition->size = new_transitions->size = 0;
+    char temp_symbol[size];
+
+    /**
+     * TODO: Break the code here
      */
-    af_t* det;
-    init_automata(det);
+    for ( int i = 0; i < det->num_transition; i++) {
+        add_transition(temp_transition, det->transitions[i], det->transition_symbol[i]);
+    }
 
-    det->start = non_det->start;
-    det->num_states = non_det->num_states;
+    memcpy(temp_symbol, det->transition_symbol, sizeof(temp_symbol));
 
-    return det;
+    transition_t* new = temp_transition->next;
+    short new_state = det->num_states++;
+
+    while (new != NULL) {
+         int i = 0;
+         while ( new != NULL && i < det->num_transition ) { // How many non deterministic transitions?
+             if ( new->from == det->transitions[i][0]
+               && new->symbol == det->transition_symbol[i]) {
+                 new->count++;
+             }
+             i++;
+         }
+
+         if ( new->count > 1 ) {
+
+             int j = 0;
+
+             do { // List non deterministic
+                 short non_det_transition[2];
+
+                 non_det_transition[0] = new_state;
+                 non_det_transition[1] = get_next_state(det->transitions,
+                         det->transition_symbol, det->num_transition, new->to,
+                         det->alphabet[j]);
+
+                 if ( non_det_transition[1] != -1 ) {
+                     add_transition(new_transitions, non_det_transition, det->alphabet[j]);
+
+                     if ( is_final_state(non_det_transition[1], det->end) ) {
+                         int k = 0;
+                         while ( det->end[k] != -1 ) k++;
+                         det->end[k] = new_state;
+                     }
+                 }
+
+             } while ( ++j < det->alphabet_size );
+         }
+         new = new->next;
+     }
+
+    list_non_deterministic_transitions(det, new_transitions);
+
+    /**
+     * TODO: Break the code here
+     */
+    // Create a new stack without non deterministic transitions
+    for ( int i = 0; i < det->num_transition; i++) {
+
+        for (transition_t* tmp = temp_transition->next; tmp != NULL; tmp = tmp->next) {
+
+            if ( tmp->from == det->transitions[i][0]
+              && tmp->to != det->transitions[i][1]
+              && tmp->symbol == det->transition_symbol[i] ) {
+                det->transitions[i][1] = new_state;
+                break;
+            }
+
+        }
+        add_transition(new_transitions, det->transitions[i], det->transition_symbol[i]);
+    }
+
+    for ( int i = 0; i < det->num_transition; i++ ) {
+        free(det->transitions[i]);
+    }
+    free(det->transitions);
+    free(det->transition_symbol);
+
+    det->num_transition = new_transitions->size;
+
+    det->transitions = (short**) calloc(det->num_transition, sizeof(short*));
+    det->transition_symbol = (char*) calloc(det->num_transition, sizeof(char));
+
+    int cnt = 0;
+    for (transition_t* tmp = new_transitions->next; tmp != NULL; tmp = tmp->next) {
+        det->transitions[cnt] = (short*) calloc(2, sizeof(short));
+
+        if ( det->transitions[cnt][0] == tmp->from
+          && det->transition_symbol[cnt] == tmp->symbol ) {
+            break;
+        } else {
+            det->transitions[cnt][0] = tmp->from;
+            det->transitions[cnt][1] = tmp->to;
+            det->transition_symbol[cnt] = tmp->symbol;
+        }
+        cnt++;
+    }
+}
+
+void list_non_deterministic_transitions(af_t* det, transition_t* transition_list)
+{
+    transition_t* temp_list = transition_list->next;
+
+    while ( temp_list != NULL ) {
+
+        transition_t* aux = temp_list;
+
+        while ( aux != NULL ) { // Remove non determistic
+
+            if ( temp_list != aux && temp_list->to != aux->to
+              && temp_list->symbol == aux->symbol ) {
+                short new[2];
+
+                temp_list->to = new[0] = det->num_states;
+                new[1] = get_next_state(det->transitions,
+                        det->transition_symbol, det->num_transition, aux->to,
+                        aux->symbol);
+
+                if ( is_final_state(new[1], det->end) ) {
+                    short end[det->num_states], k = 0;
+
+                    memcpy(end, det->end, sizeof(end) );
+                    free(det->end);
+
+                    det->end = (short*) calloc(det->num_states, sizeof(short));
+                    memcpy(det->end, end, sizeof(end));
+                    while ( det->end[k] != -1 ) k++;
+                    det->end[k] = det->num_states++;
+                    det->end[k+1] = -1;
+                }
+
+                add_transition(transition_list, new, aux->symbol);
+            }
+            aux = aux->next;
+        }
+        temp_list = temp_list->next;
+    }
+}
+
+short simulate_automata(af_t* automata, char* sentence)
+{
+    short state = automata->start, j = 0;
+
+    do {
+        state = get_next_state(automata->transitions, automata->transition_symbol,
+                automata->num_transition, state, sentence[j]);
+    } while ( sentence[++j] != '\0' );
+
+    return is_final_state(state, automata->end);
+
+}
+
+short get_next_state(short** state, char* symbols, size_t size, int actual, char symbol)
+{
+    short i = 0, round = 0, found = 0;
+
+    while ( round < 2 ) {
+        if ( symbols[i] == symbol ) {
+            if ( actual == state[i][0] ) {
+                found = 1;
+                break;
+            }
+        }
+
+        if ( i >= size ) { // Go to initial element of array
+            i = 0;
+            round++;
+        } else {
+            i++;
+        }
+    }
+
+    return found ? state[i][1] : -1;
+}
+
+short is_final_state(short state, short* end)
+{
+    short i = 0;
+
+    while ( state != end[i] && state != -1 && end[i++] != -1 );
+
+    if (state == end[i]) return 1;
+    else return 0;
+}
+
+void create_automata_file(af_t* automata, char* stream)
+{
+    FILE* file;
+
+    if ( (file = fopen(stream, "w")) != NULL ) {
+        // Header
+        fputs("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?><!--Created with JFLAP 6.4.--><structure>\n"
+              "\t<type>fa</type>\n"
+              "\t<automaton>\n"
+              "\t\t<!--The list of states.-->\n", file);
+
+        for ( int i = 0; i < automata->num_states; i++) {
+            fprintf(file, "\t\t<state id=\"%i\" name=\"q%i\">\n"
+                          "\t\t\t<x>%3.02f</x>\n"
+                          "\t\t\t<y>%3.02f</y>\n",
+                   i, i, (float) ( rand() % 200) , (float) ( rand() % 200) );
+            if ( i == 0 ) {
+                fputs("\t\t\t<initial/>\n", file);
+            }
+            if ( is_final_state(i, automata->end) ) {
+                fputs("\t\t\t<final/>\n", file);
+            }
+            fputs("\t\t</state>\n", file);
+        }
+
+        fputs("\t\t<!--The list of transitions.-->\n", file);
+        for ( int i = 0; i < automata->num_transition; i++ ) {
+            fprintf(file, "\t\t<transition>\n"
+                          "\t\t\t<from>%i</from>\n"
+                          "\t\t\t<to>%i</to>\n"
+                          "\t\t\t<read>%c</read>\n"
+                          "\t\t</transition>\n",
+                    automata->transitions[i][0], automata->transitions[i][1],
+                    automata->transition_symbol[i]);
+        }
+
+        fputs("\t</automaton>\n"
+              "</structure>", file),
+        fclose(file);
+
+    } else {
+        puts("Can't open the jff file");
+    }
+
+}
+
+void free_af(af_t* automata)
+{
+    free(automata->end);
+    free(automata->transition_symbol);
+    for ( int i = 0; i < automata->num_transition; i++)
+        free(automata->transitions[i]);
+    free(automata->transitions);
+    free(automata->alphabet);
+    free(automata);
 }

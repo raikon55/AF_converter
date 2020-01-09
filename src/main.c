@@ -1,6 +1,6 @@
 /*
  ============================================================================
- Name        : automata_convert.c
+ Name        : main.c
  Author      : Eduardo Lopes
  Version     :
  Copyright   : MIT license
@@ -8,17 +8,7 @@
  ============================================================================
  */
 
-#include <stdio.h>
 #include "automata_convert.h"
-
-/* TODO Descrição do trabalho
- * -> Receber uma setença e um arquivo com a descrição do AFN OK
- * -> Converter um AFN para um AFD que reconheça a mesma linguagem
- * -> Retorna um arquivo .xml com a descrição do AFD gerado
- * -> Simular o AFD gerado como PdC se foi uma conversão válida
- *
- * XXX Usar o padrão do simulador JFLAP 7.0
- */
 
 int main(int argc, char* argv[]) {
     if ( argc <= 1 ) {
@@ -34,17 +24,30 @@ int main(int argc, char* argv[]) {
      * on the struct
      */
     non_deterministic_parser(argv[1], non_det);
-    //show_automata(non_det);
-
+    show_automata(non_det);
     /*
      * Call the function to parse the AFN and return AFD
      */
-    af_t* det = deterministic_convert(non_det);
+    af_t* det = (af_t*) malloc(sizeof(af_t));
+    init_automata(det);
+    deterministic_convert(non_det, det);
     show_automata(det);
 
     /*
      * Call function to simulate AFD
      */
+    char* buffer = "01010010100";
+
+    if ( simulate_automata(det, buffer) ) {
+        puts("Sentença aceita!");
+    } else {
+        puts("Sentença não aceita!");
+    }
+
+    create_automata_file(det, "test.jff");
+
+    free(non_det);
+    free_af(det);
 
     return 0;
 }
