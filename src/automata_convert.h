@@ -119,22 +119,25 @@ void add_transition(transition_t* list, short* transition, char symbol);
  * I just won't finish this function, fuck off
  * TODO: Fix this function
  */
-void remove_non_determinist_transitions(af_t* det);
+void remove_non_deterministic_transitions(af_t* det);
 
 /**
+ * Create new transitions to substitute non deterministic transitions
  *
+ * @automata: Pointer to automata struct
+ * @transition_list: List of non deterministic transitions
  */
-void list_non_deterministic_transitions(af_t* det, transition_t* temp_transition,
+void create_deterministic_transitions(af_t* det, transition_t* temp_transition,
         transition_t* new_transitions);
 
 /**
- * List and append all non deterministic transitions to
+ * Create and append all new deterministic transitions to
  * transition_list
  *
  * @automata: Pointer to automata struct
  * @transition_list: List of non deterministic transitions
  */
-void remove_non_deterministic_transitions(af_t* autmata, transition_t* transition_list);
+void create_deterministic_transitions(af_t* autmata, transition_t* transition_list);
 
 /**
  * Test a given sentence on deterministic automata

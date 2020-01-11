@@ -178,7 +178,7 @@ void get_alphabet(af_t* automata)
 void deterministic_convert(af_t* non_det, af_t* det)
 {
     memcpy(det, non_det, sizeof(af_t));
-    remove_non_determinist_transitions(det);
+    remove_non_deterministic_transitions(det);
 }
 
 void add_transition(transition_t* list, short* transition, char symbol)
@@ -197,7 +197,7 @@ void add_transition(transition_t* list, short* transition, char symbol)
     list->size++;
 }
 
-void remove_non_determinist_transitions(af_t* det)
+void remove_non_deterministic_transitions(af_t* det)
 {
     size_t size = det->num_transition;
     transition_t* temp_transition = (transition_t*) malloc(sizeof(transition_t)),
@@ -222,13 +222,8 @@ void remove_non_determinist_transitions(af_t* det)
      * Append to list deterministic transitions
      */
     list_non_deterministic_transitions(det, temp_transition, new_transitions);
-    show_automata(det);
-    transition_t* temp = temp_transition->next;
-    while ( temp->next != NULL ) {
-        printf("%i -> %i : %c\n", temp->from, temp->to, temp->symbol); temp = temp->next;
-    }
     /*********/
-    remove_non_deterministic_transitions(det, new_transitions);
+    create_deterministic_transitions(det, new_transitions);
     /*********/
 
 
@@ -278,7 +273,7 @@ void remove_non_determinist_transitions(af_t* det)
     }
 }
 
-void remove_non_deterministic_transitions(af_t* det, transition_t* transition_list)
+void create_deterministic_transitions(af_t* automata, transition_t* transition_list)
 {
     transition_t* temp_list = transition_list->next;
 
@@ -292,22 +287,23 @@ void remove_non_deterministic_transitions(af_t* det, transition_t* transition_li
               && temp_list->symbol == aux->symbol ) {
                 short new[2];
 
-                temp_list->to = new[0] = det->num_states;
-                new[1] = get_next_state(det->transitions,
-                        det->transition_symbol, det->num_transition, aux->to,
-                        aux->symbol);
+                temp_list->to = new[0] = automata->num_states;
+                new[1] = get_next_state(automata->transitions,
+                        automata->transition_symbol, automata->num_transition,
+                        aux->to, aux->symbol);
 
-                if ( is_final_state(new[1], det->end) ) {
-                    short end[det->num_states], k = 0;
+                if ( is_final_state(new[1], automata->end) ) {
+                    short end[automata->num_states], k = 0;
 
-                    memcpy(end, det->end, sizeof(end) );
-                    free(det->end);
+                    memcpy(end, automata->end, sizeof(end) );
+                    free(automata->end);
 
-                    det->end = (short*) calloc(det->num_states, sizeof(short));
-                    memcpy(det->end, end, sizeof(end));
-                    while ( det->end[k] != -1 ) k++;
-                    det->end[k] = det->num_states++;
-                    det->end[k+1] = -1;
+                    automata->end = (short*) calloc(automata->num_states,
+                            sizeof(short));
+                    memcpy(automata->end, end, sizeof(end));
+                    while ( automata->end[k] != -1 ) k++;
+                    automata->end[k] = automata->num_states++;
+                    automata->end[k+1] = -1;
                 }
 
                 add_transition(transition_list, new, aux->symbol);
@@ -318,49 +314,59 @@ void remove_non_deterministic_transitions(af_t* det, transition_t* transition_li
     }
 }
 
-void list_non_deterministic_transitions(af_t* det, transition_t* temp_transition,
+void create_non_deterministic_transitions(af_t* det, transition_t* temp_transition,
         transition_t* new_transitions)
 {
     transition_t* new = temp_transition->next;
     short new_state = det->num_states++;
+    short is_non_deterministic;
 
     while (new != NULL) {
-         int i = 0;
-         while ( new != NULL && i < det->num_transition ) { // How many non deterministic transitions?
+         int i = is_non_deterministic = 0;
+
+         // is it non deterministic transitions?
+         while ( i < det->num_transition && ! is_non_deterministic ) {
              if ( new->from == det->transitions[i][0]
+               && new->to != det->transitions[i][1]
                && new->symbol == det->transition_symbol[i]) {
-                 new->count++;
+                 is_non_deterministic = 1;
+             } else {
+                 i++;
              }
-             i++;
          }
 
-         if ( new->count > 1 ) {
-
+         if ( is_non_deterministic ) {
              int j = 0;
 
-             do { // List non deterministic
-                 short non_det_transition[2];
+                 do {
+                     short non_det_transition[2];
 
-                 non_det_transition[0] = new_state;
-                 non_det_transition[1] = get_next_state(det->transitions,
-                         det->transition_symbol, det->num_transition, new->to,
-                         det->alphabet[j]);
+                     // Create new transition
+                     non_det_transition[0] = new_state;
+                     non_det_transition[1] = get_next_state(det->transitions,
+                             det->transition_symbol, det->num_transition, new->to,
+                             det->alphabet[j]);
 
-                 if ( non_det_transition[1] != -1 ) {
-                     add_transition(new_transitions, non_det_transition, det->alphabet[j]);
+                     if ( non_det_transition[1] != -1 ) {
+                         add_transition(new_transitions, non_det_transition,
+                                 det->alphabet[j]);
 
-                     if ( is_final_state(non_det_transition[1], det->end) ) {
-                         int k = 0;
-                         while ( det->end[k] != -1 ) k++;
-                         det->end[k] = new_state;
+                         if ( is_final_state(non_det_transition[1], det->end) ) {
+                             int k = 0;
+                             while ( det->end[k] != -1 ) k++;
+                             det->end[k] = new_state;
+                         }
                      }
-                 }
 
-             } while ( ++j < det->alphabet_size );
-         }
-         new = new->next;
-     }
+                 } while (++j < det->alphabet_size);
+
+                i++;
+            }
+
+        new = new->next;
+    }
 }
+
 
 short simulate_automata(af_t* automata, char* sentence)
 {

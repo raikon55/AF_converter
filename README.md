@@ -27,7 +27,7 @@ Abaixo o enunciado do trabalho
 
 O programa atualmente faz:
 
-- [ ] Ler um arquivo .jff com o AFN
+- [x] Ler um arquivo .jff com o AFN
 - [ ] Converter para AFD
-- [ ] Simular um AFD a partir de uma sentença
-- [ ] Salvar o AFD em um arquivo .jff
+- [x] Simular um AFD a partir de uma sentença
+- [x] Salvar o AFD em um arquivo .jff
