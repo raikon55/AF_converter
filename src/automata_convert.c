@@ -197,33 +197,28 @@ void add_transition(transition_t* list, short* transition, char symbol)
     list->size++;
 }
 
-void remove_non_deterministic_transitions(af_t* det)
+void remove_non_deterministic_transitions(af_t* automata)
 {
-    size_t size = det->num_transition;
+    size_t size = automata->num_transition;
     transition_t* temp_transition = (transition_t*) malloc(sizeof(transition_t)),
                 * new_transitions = (transition_t*) malloc(sizeof(transition_t));
     char temp_symbol[size];
-    short new_state = det->num_states++;
+    short new_state = automata->num_states++;
 
     temp_transition->next = new_transitions->next = NULL;
     temp_transition->size = new_transitions->size = 0;
-    /**
-     * TODO: Break the code here
-     */
-    for ( int i = 0; i < det->num_transition; i++) {
-        add_transition(temp_transition, det->transitions[i], det->transition_symbol[i]);
+
+    for ( int i = 0; i < automata->num_transition; i++) {
+        add_transition(temp_transition, automata->transitions[i],
+                automata->transition_symbol[i]);
     }
 
-    memcpy(temp_symbol, det->transition_symbol, sizeof(temp_symbol));
+    memcpy(temp_symbol, automata->transition_symbol, sizeof(temp_symbol));
 
     /*********/
-    /**
-     * FIXME: Remove bug in 'list_non_deterministic_transitions'
-     * Append to list deterministic transitions
-     */
-    list_non_deterministic_transitions(det, temp_transition, new_transitions);
+    create_deterministic_transitions(automata, temp_transition, new_transitions);
     /*********/
-    create_deterministic_transitions(det, new_transitions);
+    link_transitions(automata, new_transitions);
     /*********/
 
 
@@ -231,49 +226,52 @@ void remove_non_deterministic_transitions(af_t* det)
      * TODO: Break the code here
      */
     // Create a new stack without non deterministic transitions
-    for ( int i = 0; i < det->num_transition; i++) {
+    for ( int i = 0; i < automata->num_transition; i++) {
 
         for (transition_t* tmp = temp_transition->next; tmp != NULL; tmp = tmp->next) {
 
-            if ( tmp->from == det->transitions[i][0]
-              && tmp->to != det->transitions[i][1]
-              && tmp->symbol == det->transition_symbol[i] ) {
-                det->transitions[i][1] = new_state;
+            if ( tmp->from == automata->transitions[i][0]
+              && tmp->to != automata->transitions[i][1]
+              && tmp->symbol == automata->transition_symbol[i] ) {
+                automata->transitions[i][1] = new_state;
                 break;
             }
 
         }
-        add_transition(new_transitions, det->transitions[i], det->transition_symbol[i]);
+        add_transition(new_transitions, automata->transitions[i],
+                automata->transition_symbol[i]);
     }
 
-    for ( int i = 0; i < det->num_transition; i++ ) {
-        free(det->transitions[i]);
+    for ( int i = 0; i < automata->num_transition; i++ ) {
+        free(automata->transitions[i]);
     }
-    free(det->transitions);
-    free(det->transition_symbol);
+    free(automata->transitions);
+    free(automata->transition_symbol);
 
-    det->num_transition = new_transitions->size;
+    automata->num_transition = new_transitions->size;
 
-    det->transitions = (short**) calloc(det->num_transition, sizeof(short*));
-    det->transition_symbol = (char*) calloc(det->num_transition, sizeof(char));
+    automata->transitions = (short**)
+            calloc(automata->num_transition, sizeof(short*));
+    automata->transition_symbol = (char*)
+            calloc(automata->num_transition, sizeof(char));
 
     int cnt = 0;
     for (transition_t* tmp = new_transitions->next; tmp != NULL; tmp = tmp->next) {
-        det->transitions[cnt] = (short*) calloc(2, sizeof(short));
+        automata->transitions[cnt] = (short*) calloc(2, sizeof(short));
 
-        if ( det->transitions[cnt][0] == tmp->from
-          && det->transition_symbol[cnt] == tmp->symbol ) {
+        if ( automata->transitions[cnt][0] == tmp->from
+          && automata->transition_symbol[cnt] == tmp->symbol ) {
             break;
         } else {
-            det->transitions[cnt][0] = tmp->from;
-            det->transitions[cnt][1] = tmp->to;
-            det->transition_symbol[cnt] = tmp->symbol;
+            automata->transitions[cnt][0] = tmp->from;
+            automata->transitions[cnt][1] = tmp->to;
+            automata->transition_symbol[cnt] = tmp->symbol;
         }
         cnt++;
     }
 }
 
-void create_deterministic_transitions(af_t* automata, transition_t* transition_list)
+void link_transitions(af_t* automata, transition_t* transition_list)
 {
     transition_t* temp_list = transition_list->next;
 
@@ -312,9 +310,10 @@ void create_deterministic_transitions(af_t* automata, transition_t* transition_l
         }
         temp_list = temp_list->next;
     }
+    show_automata(automata);
 }
 
-void create_non_deterministic_transitions(af_t* det, transition_t* temp_transition,
+void create_deterministic_transitions(af_t* det, transition_t* temp_transition,
         transition_t* new_transitions)
 {
     transition_t* new = temp_transition->next;
@@ -347,6 +346,11 @@ void create_non_deterministic_transitions(af_t* det, transition_t* temp_transiti
                              det->transition_symbol, det->num_transition, new->to,
                              det->alphabet[j]);
 
+                     /**
+                      * FIXME
+                      */
+                     det->transitions[i][1] = new_state;
+
                      if ( non_det_transition[1] != -1 ) {
                          add_transition(new_transitions, non_det_transition,
                                  det->alphabet[j]);
@@ -366,7 +370,6 @@ void create_non_deterministic_transitions(af_t* det, transition_t* temp_transiti
         new = new->next;
     }
 }
-
 
 short simulate_automata(af_t* automata, char* sentence)
 {

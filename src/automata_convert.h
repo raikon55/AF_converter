@@ -116,13 +116,15 @@ void deterministic_convert(af_t* non_det, af_t* det);
 void add_transition(transition_t* list, short* transition, char symbol);
 
 /**
- * I just won't finish this function, fuck off
- * TODO: Fix this function
+ * Find and remove the non deterministic transitions
+ *
  */
 void remove_non_deterministic_transitions(af_t* det);
 
 /**
- * Create new transitions to substitute non deterministic transitions
+ * Create and append all new deterministic transitions to
+ * transition_list, and substitute a non deterministic to the
+ * new states
  *
  * @automata: Pointer to automata struct
  * @transition_list: List of non deterministic transitions
@@ -131,13 +133,9 @@ void create_deterministic_transitions(af_t* det, transition_t* temp_transition,
         transition_t* new_transitions);
 
 /**
- * Create and append all new deterministic transitions to
- * transition_list
  *
- * @automata: Pointer to automata struct
- * @transition_list: List of non deterministic transitions
  */
-void create_deterministic_transitions(af_t* autmata, transition_t* transition_list);
+void link_transitions(af_t* automata, transition_t* transition_list);
 
 /**
  * Test a given sentence on deterministic automata
