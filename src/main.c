@@ -49,5 +49,5 @@ int main(int argc, char* argv[]) {
     free(non_det);
     free_af(det);
 
-    return 0;
+    return EXIT_SUCCESS;
 }

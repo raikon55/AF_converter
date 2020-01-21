@@ -321,7 +321,8 @@ void create_deterministic_transitions(af_t* det, transition_t* temp_transition,
     short is_non_deterministic;
 
     while (new != NULL) {
-         int i = is_non_deterministic = 0;
+         int i = 0;
+         is_non_deterministic = 0;
 
          // is it non deterministic transitions?
          while ( i < det->num_transition && ! is_non_deterministic ) {
@@ -346,10 +347,14 @@ void create_deterministic_transitions(af_t* det, transition_t* temp_transition,
                              det->transition_symbol, det->num_transition, new->to,
                              det->alphabet[j]);
 
-                     /**
-                      * FIXME
-                      */
-                     det->transitions[i][1] = new_state;
+                     int k = 0;
+                     do {
+                    	 if ( new->from == det->transitions[k][0]
+						   && new->to != det->transitions[k][1]
+						   && new->symbol == det->transition_symbol[k]) {
+                    		 det->transitions[k][1] = new_state;
+                    	 }
+                     } while ( k++ < det->num_states );
 
                      if ( non_det_transition[1] != -1 ) {
                          add_transition(new_transitions, non_det_transition,
@@ -366,8 +371,7 @@ void create_deterministic_transitions(af_t* det, transition_t* temp_transition,
 
                 i++;
             }
-
-        new = new->next;
+         new = new->next;
     }
 }
 
