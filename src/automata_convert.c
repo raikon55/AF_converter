@@ -221,7 +221,6 @@ void remove_non_deterministic_transitions(af_t* automata)
     link_transitions(automata, new_transitions);
     /*********/
 
-
     /**
      * TODO: Break the code here
      */
@@ -344,7 +343,7 @@ void create_deterministic_transitions(af_t* det, transition_t* temp_transition,
                      // Create new transition
                      non_det_transition[0] = new_state;
                      non_det_transition[1] = get_next_state(det->transitions,
-                             det->transition_symbol, det->num_transition, new->to,
+                             det->transition_symbol, det->num_transition, new->from,
                              det->alphabet[j]);
 
                      int k = 0;
@@ -373,6 +372,9 @@ void create_deterministic_transitions(af_t* det, transition_t* temp_transition,
             }
          new = new->next;
     }
+
+    for ( transition_t* temp = new_transitions->next; temp != NULL; temp = temp->next )
+        printf("From %i to %i : %c\n", temp->from, temp->to, temp->symbol);
 }
 
 short simulate_automata(af_t* automata, char* sentence)
