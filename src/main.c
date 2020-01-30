@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
     /*
      * Call function to simulate AFD
      */
-    char* buffer = "01010010100";
+    char* buffer = "00001111000";
 
     if ( simulate_automata(det, buffer) ) {
         puts("Sentença aceita!");
