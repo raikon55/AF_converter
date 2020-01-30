@@ -335,44 +335,43 @@ void create_deterministic_transitions(af_t* det, transition_t* temp_transition,
          }
 
          if ( is_non_deterministic ) {
-             int j = 0;
 
-                 do {
-                     short non_det_transition[2];
+             short non_det_transition[2];
 
-                     // Create new transition
-                     non_det_transition[0] = new_state;
-                     non_det_transition[1] = get_next_state(det->transitions,
-                             det->transition_symbol, det->num_transition, new->from,
-                             det->alphabet[j]);
+             // Create new transition
+             non_det_transition[0] = new_state;
+             non_det_transition[1] = get_next_state(det->transitions,
+                     det->transition_symbol, det->num_transition, new->from,
+                     det->transition_symbol[i]);
 
+             int k = 0;
+             do {
+
+                 if ( new->from == det->transitions[k][0]
+                   && new->to != det->transitions[k][1]
+                   && new->symbol == det->transition_symbol[k]) {
+                     det->transitions[k][1] = new_state;
+                 } else if ( new->to == det->transitions[k][1] ) {
+                     det->transitions[k][1] = new_state;
+                 }
+
+             } while ( k++ < det->num_states );
+
+             if ( non_det_transition[1] != -1 ) {
+                 add_transition(new_transitions, non_det_transition,
+                         det->transition_symbol[i]);
+
+                 if ( is_final_state(non_det_transition[1], det->end) ) {
                      int k = 0;
-                     do {
-                    	 if ( new->from == det->transitions[k][0]
-						   && new->to != det->transitions[k][1]
-						   && new->symbol == det->transition_symbol[k]) {
-                    		 det->transitions[k][1] = new_state;
-                    	 }
-                     } while ( k++ < det->num_states );
+                     while ( det->end[k] != -1 ) k++;
+                     det->end[k] = new_state;
+                 }
+             }
 
-                     if ( non_det_transition[1] != -1 ) {
-                         add_transition(new_transitions, non_det_transition,
-                                 det->alphabet[j]);
-
-                         if ( is_final_state(non_det_transition[1], det->end) ) {
-                             int k = 0;
-                             while ( det->end[k] != -1 ) k++;
-                             det->end[k] = new_state;
-                         }
-                     }
-
-                 } while (++j < det->alphabet_size);
-
-                i++;
-            }
+             i++;
+        }
          new = new->next;
     }
-
     for ( transition_t* temp = new_transitions->next; temp != NULL; temp = temp->next )
         printf("From %i to %i : %c\n", temp->from, temp->to, temp->symbol);
 }
