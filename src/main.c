@@ -23,20 +23,20 @@ int main(int argc, char* argv[]) {
      * Read the .xml files to receive the AFN, and put it
      * on the struct
      */
-    non_deterministic_parser(argv[1], non_det);
-    //show_automata(non_det);
+    deterministic_file_parser(argv[1], non_det);
+
     /*
      * Call the function to parse the AFN and return AFD
      */
     af_t* det = (af_t*) malloc(sizeof(af_t));
     init_automata(det);
     deterministic_convert(non_det, det);
-    //show_automata(det);
+    show_automata(det);
 
     /*
      * Call function to simulate AFD
      */
-    char* buffer = "00001111000";
+    char* buffer = "10";
 
     if ( simulate_automata(det, buffer) ) {
         puts("Sentença aceita!");
@@ -44,7 +44,7 @@ int main(int argc, char* argv[]) {
         puts("Sentença não aceita!");
     }
 
-    create_automata_file(det, "test.jff");
+    create_automata_file(det, "test/afd.jff");
 
     free(non_det);
     free_af(det);

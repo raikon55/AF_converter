@@ -47,7 +47,7 @@ void show_automata(af_t* automata)
     }
 }
 
-void non_deterministic_parser(char* stream, af_t* automata)
+void deterministic_file_parser(char* stream, af_t* automata)
 {
     FILE* file;
 
@@ -177,8 +177,25 @@ void get_alphabet(af_t* automata)
 
 void deterministic_convert(af_t* non_det, af_t* det)
 {
+	transition_t* temp_transition = (transition_t*) malloc(sizeof(transition_t));
+
     memcpy(det, non_det, sizeof(af_t));
-    remove_non_deterministic_transitions(det);
+
+    for ( int i = 0; i < det->num_transition; i++) {
+        add_transition(temp_transition, det->transitions[i],
+                det->transition_symbol[i]);
+    }
+
+    while (has_non_deterministic_transaction(temp_transition, det)) {
+    	remove_non_deterministic_transitions(det);
+
+    	free(temp_transition);
+    	temp_transition = (transition_t*) malloc(sizeof(transition_t));
+        for ( int i = 0; i < det->num_transition; i++) {
+            add_transition(temp_transition, det->transitions[i],
+                    det->transition_symbol[i]);
+        }
+    }
 }
 
 void add_transition(transition_t* list, short* transition, char symbol)
@@ -189,7 +206,6 @@ void add_transition(transition_t* list, short* transition, char symbol)
     new->to = transition[1];
     new->symbol = symbol;
     new->count = 0;
-    new->next = NULL;
 
     new->next = list->next;
     list->next = new;
@@ -216,7 +232,7 @@ void remove_non_deterministic_transitions(af_t* automata)
     memcpy(temp_symbol, automata->transition_symbol, sizeof(temp_symbol));
 
     /*********/
-    create_deterministic_transitions(automata, temp_transition, new_transitions);
+	create_deterministic_transitions(automata, temp_transition, new_transitions);
     /*********/
     link_transitions(automata, new_transitions);
     /*********/
@@ -229,9 +245,7 @@ void remove_non_deterministic_transitions(af_t* automata)
 
         for (transition_t* tmp = temp_transition->next; tmp != NULL; tmp = tmp->next) {
 
-            if ( tmp->from == automata->transitions[i][0]
-              && tmp->to != automata->transitions[i][1]
-              && tmp->symbol == automata->transition_symbol[i] ) {
+            if ( is_non_deterministic_transaction(tmp, automata, i) ) {
                 automata->transitions[i][1] = new_state;
                 break;
             }
@@ -325,9 +339,7 @@ void create_deterministic_transitions(af_t* det, transition_t* temp_transition,
 
          // is it non deterministic transitions?
          while ( i < det->num_transition && ! is_non_deterministic ) {
-             if ( new->from == det->transitions[i][0]
-               && new->to != det->transitions[i][1]
-               && new->symbol == det->transition_symbol[i]) {
+        	 if ( is_non_deterministic_transaction(new, det, i) ) {
                  is_non_deterministic = 1;
              } else {
                  i++;
@@ -344,20 +356,33 @@ void create_deterministic_transitions(af_t* det, transition_t* temp_transition,
                      det->transition_symbol, det->num_transition, new->from,
                      det->transition_symbol[i]);
 
+             if (non_det_transition[1] == new->from) {
+            	 non_det_transition[1] = -1;
+             }
+
+
              int j = 0;
              do {
 
-                 if ( new->from == det->transitions[j][0]
-                   && new->to != det->transitions[j][1]
-                   && new->symbol == det->transition_symbol[j]) {
-                     det->transitions[j][1] = new_state;
-                 } else if ( new->to == det->transitions[j][1] ) {
-                     det->transitions[j][1] = new_state;
-                 } else if ( det->transitions[j][0] == non_det_transition[1] ) {
-                     det->transitions[j][0] = new_state;
-                 }
+            	 if ( is_non_deterministic_transaction(new, det, j) ) {
+            		 det->transitions[j][1] = new_state;
 
-             } while ( j++ < det->num_states );
+            	 } else if ( new->to == det->transitions[j][1] ) {
+            		 det->transitions[j][1] = new_state;
+
+				 } else if ( det->transitions[j][0] == non_det_transition[1] ) {
+					 det->transitions[j][0] = new_state;
+				 }
+
+             } while (++j < det->num_states);
+
+//                 } else if ( new->to == det->transitions[j][1] ) {
+//                     det->transitions[j][1] = new_state;
+//
+//                 } else if ( det->transitions[j][0] == non_det_transition[1] ) {
+//                     det->transitions[j][0] = new_state;
+//                 }
+
 
              if ( non_det_transition[1] != -1 ) {
                  add_transition(new_transitions, non_det_transition,
@@ -382,28 +407,49 @@ void create_deterministic_transitions(af_t* det, transition_t* temp_transition,
     }
 }
 
+short has_non_deterministic_transaction(transition_t* list, af_t* det)
+{
+	int i = 0;
+	do {
+		if ( is_non_deterministic_transaction(list, det, i) ) {
+			return 1;
+		}
+	} while ( i++ < det->num_transition );
+
+	return 0;
+}
+
+short is_non_deterministic_transaction(transition_t* new, af_t* det, int position) {
+	if ( new->from == det->transitions[position][0]
+	  && new->to != det->transitions[position][1]
+	  && new->symbol == det->transition_symbol[position]) {
+		return 1;
+	}
+
+    return 0;
+}
+
 short simulate_automata(af_t* automata, char* sentence)
 {
     short state = automata->start, j = 0;
 
-    do {
+    while ( sentence[j] != '\0' ) {
         state = get_next_state(automata->transitions, automata->transition_symbol,
                 automata->num_transition, state, sentence[j]);
-    } while ( sentence[++j] != '\0' );
+        j++;
+    };
 
     return is_final_state(state, automata->end);
-
 }
 
 short get_next_state(short** state, char* symbols, size_t size, int actual, char symbol)
 {
-    short i = 0, round = 0, found = 0;
+    short i = 0, round = 0;
 
     while ( round < 2 ) {
         if ( symbol == symbols[i] ) {
             if ( actual == state[i][0] ) {
-                found = 1;
-                break;
+                return state[i][1];
             }
         }
 
@@ -415,7 +461,7 @@ short get_next_state(short** state, char* symbols, size_t size, int actual, char
         }
     }
 
-    return found ? state[i][1] : -1;
+    return (short) actual;
 }
 
 short is_final_state(short state, short* end)
@@ -478,8 +524,9 @@ void free_af(af_t* automata)
 {
     free(automata->end);
     free(automata->transition_symbol);
-    for ( int i = 0; i < automata->num_transition; i++)
+    for ( int i = 0; i < automata->num_transition; i++) {
         free(automata->transitions[i]);
+    }
     free(automata->transitions);
     free(automata->alphabet);
     free(automata);

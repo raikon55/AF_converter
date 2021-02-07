@@ -61,10 +61,10 @@ void show_automata(af_t* automata);
 /**
  * Parse the file.jff and save each state and transition
  *
- * @stream: File with xml format
+ * @stream: XML file
  * @automata: Pointer to automata struct
  */
-void non_deterministic_parser(char* stream, af_t* automata);
+void deterministic_file_parser(char* stream, af_t* automata);
 
 /**
  * Initialize each attribute of automata with 0 (or NULL). Do it is a easily way
@@ -136,6 +136,16 @@ void create_deterministic_transitions(af_t* det, transition_t* temp_transition,
  *
  */
 void link_transitions(af_t* automata, transition_t* transition_list);
+
+/**
+ *
+ */
+short has_non_deterministic_transaction(transition_t* new, af_t* det);
+
+/**
+ *
+ */
+short is_non_deterministic_transaction(transition_t* new, af_t* det, int position);
 
 /**
  * Test a given sentence on deterministic automata
