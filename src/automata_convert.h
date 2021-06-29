@@ -64,7 +64,7 @@ void show_automata(af_t* automata);
  * @stream: XML file
  * @automata: Pointer to automata struct
  */
-void deterministic_file_parser(char* stream, af_t* automata);
+void automata_file_parser(char* stream, af_t* automata);
 
 /**
  * Initialize each attribute of automata with 0 (or NULL). Do it is a easily way
@@ -188,5 +188,8 @@ void create_automata_file(af_t* automata, char* stream);
  * @automata: The automata want to be free :)
  */
 void free_af(af_t* automata);
+
+
+void new_automata(af_t* automata, transition_t* temp_transition, transition_t* new_transitions, short new_state);
 
 #endif /* AUTOMATA_CONVERT_H_ */

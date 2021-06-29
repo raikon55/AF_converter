@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
      * Read the .xml files to receive the AFN, and put it
      * on the struct
      */
-    deterministic_file_parser(argv[1], non_det);
+    automata_file_parser(argv[1], non_det);
 
     /*
      * Call the function to parse the AFN and return AFD
@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
     /*
      * Call function to simulate AFD
      */
-    char* buffer = "10";
+    char* buffer = "01";
 
     if ( simulate_automata(det, buffer) ) {
         puts("Sentença aceita!");

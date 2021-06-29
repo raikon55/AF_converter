@@ -16,7 +16,7 @@ void help(char* err)
     fprintf(stdout,
     "Erro na execução\n"
     "Uso: %s arquivo.jff\n"
-    "Junto a chamada do programa, passe como argumento um arquivo do programa"
+    "Junto a chamada do programa, passe como argumento um arquivo do programa "
     "JFLAP.\nEsse arquivo deve ser conter informações sobre um automâto não "
     "determinisco.\n", &str[1]);
 }
@@ -47,7 +47,7 @@ void show_automata(af_t* automata)
     }
 }
 
-void deterministic_file_parser(char* stream, af_t* automata)
+void automata_file_parser(char* stream, af_t* automata)
 {
     FILE* file;
 
@@ -236,7 +236,7 @@ void remove_non_deterministic_transitions(af_t* automata)
     /*********/
     link_transitions(automata, new_transitions);
     /*********/
-
+//    new_automata(automata, temp_transition, new_transitions, new_state);
     /**
      * TODO: Break the code here
      */
@@ -246,6 +246,7 @@ void remove_non_deterministic_transitions(af_t* automata)
         for (transition_t* tmp = temp_transition->next; tmp != NULL; tmp = tmp->next) {
 
             if ( is_non_deterministic_transaction(tmp, automata, i) ) {
+            	printf("%i\n", new_state);
                 automata->transitions[i][1] = new_state;
                 break;
             }
@@ -305,7 +306,7 @@ void link_transitions(af_t* automata, transition_t* transition_list)
                 if ( is_final_state(new[1], automata->end) ) {
                     short end[automata->num_states], k = 0;
 
-                    memcpy(end, automata->end, sizeof(end) );
+                    memcpy(end, automata->end, sizeof(end));
                     free(automata->end);
 
                     automata->end = (short*) calloc(automata->num_states,
@@ -360,9 +361,7 @@ void create_deterministic_transitions(af_t* det, transition_t* temp_transition,
             	 non_det_transition[1] = -1;
              }
 
-
-             int j = 0;
-             do {
+             for (int j = 0; j < det->num_states; j++) {
 
             	 if ( is_non_deterministic_transaction(new, det, j) ) {
             		 det->transitions[j][1] = new_state;
@@ -374,15 +373,7 @@ void create_deterministic_transitions(af_t* det, transition_t* temp_transition,
 					 det->transitions[j][0] = new_state;
 				 }
 
-             } while (++j < det->num_states);
-
-//                 } else if ( new->to == det->transitions[j][1] ) {
-//                     det->transitions[j][1] = new_state;
-//
-//                 } else if ( det->transitions[j][0] == non_det_transition[1] ) {
-//                     det->transitions[j][0] = new_state;
-//                 }
-
+             }
 
              if ( non_det_transition[1] != -1 ) {
                  add_transition(new_transitions, non_det_transition,
@@ -400,7 +391,6 @@ void create_deterministic_transitions(af_t* det, transition_t* temp_transition,
                  while ( det->end[k] != -1 ) k++;
                  det->end[k] = new_state;
              }
-
              i++;
         }
          new = new->next;
@@ -409,13 +399,11 @@ void create_deterministic_transitions(af_t* det, transition_t* temp_transition,
 
 short has_non_deterministic_transaction(transition_t* list, af_t* det)
 {
-	int i = 0;
-	do {
+	for (int i = 0; i < det->num_transition; i++) {
 		if ( is_non_deterministic_transaction(list, det, i) ) {
 			return 1;
 		}
-	} while ( i++ < det->num_transition );
-
+	}
 	return 0;
 }
 
@@ -437,7 +425,7 @@ short simulate_automata(af_t* automata, char* sentence)
         state = get_next_state(automata->transitions, automata->transition_symbol,
                 automata->num_transition, state, sentence[j]);
         j++;
-    };
+    }
 
     return is_final_state(state, automata->end);
 }
@@ -531,3 +519,50 @@ void free_af(af_t* automata)
     free(automata->alphabet);
     free(automata);
 }
+
+void new_automata(af_t* automata, transition_t* temp_transition,
+		transition_t* new_transitions, short new_state) {
+    // Create a new stack without non deterministic transitions
+    for ( int i = 0; i < automata->num_transition; i++) {
+
+        for (transition_t* tmp = temp_transition->next; tmp != NULL; tmp = tmp->next) {
+
+            if ( is_non_deterministic_transaction(tmp, automata, i) ) {
+                automata->transitions[i][1] = new_state;
+                break;
+            }
+        }
+        add_transition(new_transitions, automata->transitions[i],
+                automata->transition_symbol[i]);
+    }
+
+    for ( int i = 0; i < automata->num_transition; i++ ) {
+        free(automata->transitions[i]);
+    }
+    free(automata->transitions);
+    free(automata->transition_symbol);
+
+    automata->num_transition = new_transitions->size;
+
+    automata->transitions = (short**)
+            calloc(automata->num_transition, sizeof(short*));
+    automata->transition_symbol = (char*)
+            calloc(automata->num_transition, sizeof(char));
+
+    int cnt = 0;
+    for (transition_t* tmp = new_transitions->next; tmp != NULL; tmp = tmp->next) {
+        automata->transitions[cnt] = (short*) calloc(2, sizeof(short));
+
+        if ( automata->transitions[cnt][0] == tmp->from
+          && automata->transition_symbol[cnt] == tmp->symbol ) {
+            break;
+        } else {
+            automata->transitions[cnt][0] = tmp->from;
+            automata->transitions[cnt][1] = tmp->to;
+            automata->transition_symbol[cnt] = tmp->symbol;
+        }
+        cnt++;
+    }
+
+}
+
