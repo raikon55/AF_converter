@@ -8,46 +8,46 @@
  ============================================================================
  */
 
-#include "automata_convert.h"
+#include "../include/automata_convert.h"
 
-int main(int argc, char* argv[]) {
-    if ( argc <= 1 ) {
-        help(argv[0]);
-        return EXIT_FAILURE;
-    }
+int main(int argc, char *argv[]) {
+  if (argc <= 1) {
+    help(argv[0]);
+    return EXIT_FAILURE;
+  }
 
-    af_t* non_det = (af_t*) malloc(sizeof(af_t));
-    init_automata(non_det);
+  af_t *non_det = (af_t *)malloc(sizeof(af_t));
+  init_automata(non_det);
 
-    /*
-     * Read the .xml files to receive the AFN, and put it
-     * on the struct
-     */
-    automata_file_parser(argv[1], non_det);
+  /*
+   * Read the .xml files to receive the AFN, and put it
+   * on the struct
+   */
+  automata_file_parser(argv[1], non_det);
 
-    /*
-     * Call the function to parse the AFN and return AFD
-     */
-    af_t* det = (af_t*) malloc(sizeof(af_t));
-    init_automata(det);
-    deterministic_convert(non_det, det);
-    show_automata(det);
+  /*
+   * Call the function to parse the AFN and return AFD
+   */
+  af_t *det = (af_t *)malloc(sizeof(af_t));
+  init_automata(det);
+  deterministic_convert(non_det, det);
+  show_automata(det);
 
-    /*
-     * Call function to simulate AFD
-     */
-    char* buffer = "01";
+  /*
+   * Call function to simulate AFD
+   */
+  char *buffer = "01";
 
-    if ( simulate_automata(det, buffer) ) {
-        puts("Sentença aceita!");
-    } else {
-        puts("Sentença não aceita!");
-    }
+  if (simulate_automata(det, buffer)) {
+    puts("Sentença aceita!");
+  } else {
+    puts("Sentença não aceita!");
+  }
 
-    create_automata_file(det, "test/afd.jff");
+  create_automata_file(det, "test/afd.jff");
 
-    free(non_det);
-    free_af(det);
+  free(non_det);
+  free_af(det);
 
-    return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }
